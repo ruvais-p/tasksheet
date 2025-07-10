@@ -1,0 +1,24 @@
+<h2>Welcome, {{ employee_name }}</h2>
+<h3>Enter Timesheet Data</h3>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Submit for Approval</button>
+</form>
+
+<h3>Your Previous Entries</h3>
+<table>
+  <tr>
+    <th>Date</th><th>Category</th><th>Description</th><th>Hours</th><th>Status</th><th>Remark</th>
+  </tr>
+  {% for entry in previous_entries %}
+  <tr>
+    <td>{{ entry.date }}</td>
+    <td>{{ entry.category }}</td>
+    <td>{{ entry.work_description }}</td>
+    <td>{{ entry.hours }}</td>
+    <td>{{ entry.status }}</td>
+    <td>{{ entry.admin_remark }}</td>
+  </tr>
+  {% endfor %}
+</table>
