@@ -3,12 +3,30 @@ from django.contrib.auth.forms import UserCreationForm
 from .models import User
 from .models import Timesheet
 
+DEPARTMENT_CHOICES = [
+    ('CSE', 'Computer Science'),
+    ('ECE', 'Electronics'),
+    ('ME', 'Mechanical'),
+    ('CE', 'Civil'),
+    ('EE', 'Electrical'),
+    # Add more as needed
+]
+
 class SignUpForm(UserCreationForm):
     employee_id = forms.CharField(max_length=20)
+    department = forms.ChoiceField(choices=DEPARTMENT_CHOICES)  # Added department selection
 
     class Meta:
         model = User
-        fields = ['employee_id', 'username', 'password1', 'password2']
+        fields = ['employee_id', 'department', 'username', 'password1', 'password2']
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.employee_id = self.cleaned_data['employee_id']
+        user.department = self.cleaned_data['department']
+        if commit:
+            user.save()
+        return user
 
 class SignInForm(forms.Form):
     employee_id = forms.CharField(max_length=20)

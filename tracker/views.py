@@ -23,12 +23,16 @@ def signin_view(request):
     if request.method == 'POST':
         form = SignInForm(request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get('employee_id')
+            employee_id = form.cleaned_data.get('employee_id')
             password = form.cleaned_data.get('password')
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                return redirect('dashboard')
+            try:
+                user_obj = User.objects.get(employee_id=employee_id)
+                user = authenticate(request, username=user_obj.username, password=password)
+                if user is not None:
+                    login(request, user)
+                    return redirect('dashboard')
+            except User.DoesNotExist:
+                user = None  # Invalid login
     else:
         form = SignInForm()
     return render(request, 'signin.html', {'form': form})
@@ -42,6 +46,7 @@ def employee_dashboard(request):
         if form.is_valid():
             timesheet = form.save(commit=False)
             timesheet.user = user
+            timesheet.department = user.department  # Set department from User
             timesheet.status = 'Submitted'
             timesheet.save()
             # Optionally, send notification to admin
@@ -53,8 +58,6 @@ def employee_dashboard(request):
         'previous_entries': previous_entries,
         'employee_name': user.username,
     })
-    
- # adjust import as per your structure
 
 from django.views.decorators.csrf import csrf_exempt
 

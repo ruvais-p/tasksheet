@@ -4,6 +4,7 @@ from django.db import models
 class User(AbstractUser):
     is_admin = models.BooleanField(default=False)
     employee_id = models.CharField(max_length=20, unique=True)
+    department = models.CharField(max_length=100, default="Unknown")  # or "Unknown"
 
 class Timesheet(models.Model):
     CATEGORY_CHOICES = [
@@ -33,7 +34,7 @@ class Timesheet(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    week = models.DateField()  # Could be a week start date
+    department = models.CharField(max_length=100, default="Unknown") 
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
     work_description = models.CharField(max_length=50, choices=WORK_DESC_CHOICES)
     date = models.DateField()
