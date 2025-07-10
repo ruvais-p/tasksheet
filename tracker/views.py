@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from .models import User
-from .forms import SignUpForm, SignInForm
+from .forms import DepartmentHeadSignInForm, DepartmentHeadSignUpForm, SignUpForm, SignInForm
 from django.contrib.auth.decorators import login_required
 from .models import Timesheet
 from .forms import TimesheetEntryForm
@@ -79,3 +79,59 @@ def admin_dashboard(request):
             pass  # handle error if needed
 
     return render(request, 'admin_dashboard.html', {'timesheets': timesheets})
+
+def department_head_signup_view(request):
+    if request.method == 'POST':
+        form = DepartmentHeadSignUpForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('department_head_signin')
+    else:
+        form = DepartmentHeadSignUpForm()
+    return render(request, 'department_head_signup.html', {'form': form})
+
+def department_head_signin_view(request):
+    if request.method == 'POST':
+        form = DepartmentHeadSignInForm(request.POST)
+        if form.is_valid():
+            employee_id = form.cleaned_data.get('employee_id')
+            password = form.cleaned_data.get('password')
+            try:
+                user_obj = User.objects.get(employee_id=employee_id, is_department_head=True)
+                user = authenticate(request, username=user_obj.username, password=password)
+                if user is not None:
+                    login(request, user)
+                    return redirect('department_head_dashboard')
+            except User.DoesNotExist:
+                user = None
+    else:
+        form = DepartmentHeadSignInForm()
+    return render(request, 'department_head_signin.html', {'form': form})
+
+@login_required
+def department_head_dashboard(request):
+    user = request.user
+    if not user.is_department_head:
+        return redirect('signin')
+    
+    # Handle status update
+    if request.method == 'POST':
+        ts_id = request.POST.get('ts_id')
+        action = request.POST.get('action')  # 'Approved', 'Rejected', 'Rework'
+        remark = request.POST.get('department_head_remark', '')
+        try:
+            timesheet = Timesheet.objects.get(id=ts_id, department=user.department)
+            if action in ['Approved', 'Rejected', 'Rework']:
+                timesheet.status = action
+                # Optionally, you can add a department_head_remark field to the Timesheet model
+                timesheet.admin_remark = remark
+                timesheet.save()
+        except Timesheet.DoesNotExist:
+            pass  # handle error if needed
+    
+    department_timesheets = Timesheet.objects.filter(department=user.department)
+    return render(request, 'department_head_dashboard.html', {
+        'department_timesheets': department_timesheets,
+        'department': user.department,
+        'employee_name': user.username,
+    })

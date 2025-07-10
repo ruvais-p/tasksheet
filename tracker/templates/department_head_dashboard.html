@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ department }} Department - Head Dashboard</title>
+</head>
+<body>
+    <h2>Welcome, {{ employee_name }} (Department Head)</h2>
+    <h3>{{ department }} Department Timesheets</h3>
+    <table border="1">
+        <tr>
+            <th>Employee</th>
+            <th>Category</th>
+            <th>Work Description</th>
+            <th>Date</th>
+            <th>Hours</th>
+            <th>Status</th>
+            <th>Submitted At</th>
+            <th>Remark</th>
+            <th>Update Status</th>
+        </tr>
+        {% for ts in department_timesheets %}
+        <tr>
+            <td>{{ ts.user.username }}</td>
+            <td>{{ ts.category }}</td>
+            <td>{{ ts.work_description }}</td>
+            <td>{{ ts.date }}</td>
+            <td>{{ ts.hours }}</td>
+            <td>{{ ts.status }}</td>
+            <td>{{ ts.submitted_at }}</td>
+            <td>{{ ts.admin_remark }}</td>
+            <td>
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="ts_id" value="{{ ts.id }}">
+                    <select name="action">
+                        <option value="Approved" {% if ts.status == "Approved" %}selected{% endif %}>Approve</option>
+                        <option value="Rejected" {% if ts.status == "Rejected" %}selected{% endif %}>Reject</option>
+                        <option value="Rework" {% if ts.status == "Rework" %}selected{% endif %}>Rework</option>
+                    </select>
+                    <input type="text" name="department_head_remark" placeholder="Remark (optional)">
+                    <button type="submit">Update</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9">No timesheets found for this department.</td></tr>
+        {% endfor %}
+    </table>
+    <p><a href="{% url 'logout' %}">Logout</a></p>
+</body>
+</html>
