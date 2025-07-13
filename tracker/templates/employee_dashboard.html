@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Timesheet Entry</title>
+  <title>Employee Dashboard - Timesheet Entry</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -23,6 +23,18 @@
 
     h2, h3 {
       color: #2c3e50;
+    }
+
+    .employee-info {
+      background-color: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+
+    .employee-info p {
+      margin: 0.5rem 0;
+      color: #555;
     }
 
     form {
@@ -77,6 +89,29 @@
       font-weight: 600;
     }
 
+    .status {
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .status.open { background-color: #e3f2fd; color: #1976d2; }
+    .status.submitted { background-color: #fff3e0; color: #f57c00; }
+    .status.approved { background-color: #e8f5e8; color: #388e3c; }
+    .status.rework { background-color: #fff8e1; color: #f9a825; }
+    .status.rejected { background-color: #ffebee; color: #d32f2f; }
+
+    .logout-link {
+      margin-top: 1.5rem;
+      text-align: right;
+    }
+
+    .logout-link a {
+      text-decoration: none;
+      color: #c0392b;
+    }
+
     @media (max-width: 768px) {
       table, thead, tbody, th, td, tr {
         display: block;
@@ -116,7 +151,16 @@
 </head>
 <body>
   <div class="container">
-    <h2>Welcome, {{ employee_name }}</h2>
+    <h2>Employee Dashboard</h2>
+    
+    <div class="employee-info">
+      <h3>Employee Information</h3>
+      <p><strong>Name:</strong> {{ employee_name }}</p>
+      <p><strong>Employee ID:</strong> {{ employee.employee_id }}</p>
+      <p><strong>Department:</strong> {{ employee.department }}</p>
+      <p><strong>Sub-Department:</strong> {{ employee.sub_department|default:"Not specified" }}</p>
+      <p><strong>Allocated Post:</strong> {{ employee.allocated_post }}</p>
+    </div>
 
     <h3>Enter Timesheet Data</h3>
     <form method="post">
@@ -134,7 +178,8 @@
           <th>Description</th>
           <th>Hours</th>
           <th>Status</th>
-          <th>Remark</th>
+          <th>Admin Remark</th>
+          <th>Dept Head Remark</th>
         </tr>
       </thead>
       <tbody>
@@ -144,14 +189,21 @@
           <td data-label="Category">{{ entry.category }}</td>
           <td data-label="Description">{{ entry.work_description }}</td>
           <td data-label="Hours">{{ entry.hours }}</td>
-          <td data-label="Status">{{ entry.status }}</td>
-          <td data-label="Remark">{{ entry.admin_remark }}</td>
+          <td data-label="Status">
+            <span class="status {{ entry.status|lower }}">{{ entry.status }}</span>
+          </td>
+          <td data-label="Admin Remark">{{ entry.admin_remark|default:"—" }}</td>
+          <td data-label="Dept Head Remark">{{ entry.department_head_remark|default:"—" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" style="text-align:center;">No previous entries found.</td></tr>
+        <tr><td colspan="7" style="text-align:center;">No previous entries found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
+
+    <div class="logout-link">
+      <a href="{% url 'logout' %}">Logout</a>
+    </div>
   </div>
 </body>
 </html>

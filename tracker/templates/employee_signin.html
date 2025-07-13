@@ -75,14 +75,71 @@
       font-size: 0.9rem;
       display: none;
     }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    button[disabled] {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      color: #d32f2f;
+      background-color: #ffebee;
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
   <div class="form-box">
     <h2>Sign In</h2>
+    {% if form.non_field_errors %}
+      <div class="error-message">
+        {% for error in form.non_field_errors %}
+          {{ error }}
+        {% endfor %}
+      </div>
+    {% endif %}
+    
+    <!-- Add this error display for CSRF errors -->
+    {% if csrf_failure %}
+      <div class="error-message">
+        Session expired. Please try signing in again.
+      </div>
+    {% endif %}
+    
     <form method="post" onsubmit="showLoader()">
-      {% csrf_token %}
-      {{ form.as_p }}
+      {% csrf_token %}  <!-- This must be present -->
+      
+      <!-- Manually render form fields to ensure proper ordering -->
+      <div class="form-group">
+        <label for="id_employee_id">Employee ID</label>
+        <input type="text" name="employee_id" id="id_employee_id" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="id_password">Password</label>
+        <input type="password" name="password" id="id_password" required>
+      </div>
+      
       <button type="submit">Sign In</button>
       <div id="loading" class="loading">Signing in...</div>
     </form>
@@ -91,7 +148,16 @@
   <script>
     function showLoader() {
       document.getElementById('loading').style.display = 'block';
+      document.querySelector('button[type="submit"]').disabled = true;
     }
+    
+    // Clear any existing form errors when user starts typing
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', () => {
+        const errorMsg = document.querySelector('.error-message');
+        if (errorMsg) errorMsg.style.display = 'none';
+      });
+    });
   </script>
 </body>
 </html>

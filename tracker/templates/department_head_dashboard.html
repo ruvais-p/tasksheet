@@ -13,36 +13,102 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
       background-color: #ffffff;
       padding: 2rem;
       border-radius: 10px;
       box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+      display: grid;
+      grid-template-columns: 300px 1fr 300px;
+      gap: 2rem;
     }
 
-    h2, h3 {
+    .panel {
+      background-color: #f8f9fa;
+      padding: 1.5rem;
+      border-radius: 8px;
+      height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    .header-info {
+      background-color: #f8f9fa;
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      grid-column: 1 / -1;
+    }
+
+    .header-info h2 {
+      margin: 0 0 1rem 0;
+      color: #2c3e50;
+    }
+
+    .header-info p {
+      margin: 0.5rem 0;
+      color: #555;
+    }
+
+    h3 {
       color: #2c3e50;
       margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #ddd;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      font-size: 0.95rem;
-    }
-
-    table th, table td {
+    .employee-item {
       padding: 0.75rem;
-      border: 1px solid #ddd;
-      text-align: left;
+      margin-bottom: 0.5rem;
+      background-color: #fff;
+      border-radius: 6px;
+      border: 1px solid #eee;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
 
-    table th {
+    .employee-item:hover {
       background-color: #f0f2f5;
-      font-weight: 600;
     }
+
+    .employee-item.active {
+      background-color: #e3f2fd;
+      border-color: #bbdefb;
+    }
+
+    .employee-details {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .timesheet-item {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background-color: #fff;
+      border-radius: 6px;
+      border: 1px solid #eee;
+    }
+
+    .timesheet-details {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .status {
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: inline-block;
+    }
+
+    .status.open { background-color: #e3f2fd; color: #1976d2; }
+    .status.submitted { background-color: #fff3e0; color: #f57c00; }
+    .status.approved { background-color: #e8f5e8; color: #388e3c; }
+    .status.rework { background-color: #fff8e1; color: #f9a825; }
+    .status.rejected { background-color: #ffebee; color: #d32f2f; }
 
     form {
       display: flex;
@@ -71,6 +137,7 @@
     .logout-link {
       margin-top: 1.5rem;
       text-align: right;
+      grid-column: 1 / -1;
     }
 
     .logout-link a {
@@ -78,97 +145,107 @@
       color: #c0392b;
     }
 
-    @media (max-width: 768px) {
-      table, thead, tbody, th, td, tr {
-        display: block;
+    @media (max-width: 1200px) {
+      .container {
+        grid-template-columns: 1fr;
       }
-
-      thead {
-        display: none;
-      }
-
-      table tr {
-        margin-bottom: 1.5rem;
-        background: #fff;
-        padding: 1rem;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      }
-
-      table td {
-        text-align: right;
-        position: relative;
-        padding-left: 50%;
-        border: none;
-        border-bottom: 1px solid #eee;
-      }
-
-      table td::before {
-        content: attr(data-label);
-        position: absolute;
-        left: 1rem;
-        top: 0.75rem;
-        font-weight: bold;
-        text-align: left;
-        color: #444;
-      }
-
-      form {
-        flex-direction: column;
+      
+      .panel {
+        height: auto;
+        max-height: 400px;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Welcome, {{ employee_name }} (Department Head)</h2>
-    <h3>{{ department }} Department Timesheets</h3>
+    <div class="header-info">
+      <h2>Department Head Dashboard</h2>
+      <p><strong>Name:</strong> {{ employee_name }}</p>
+      <p><strong>Employee ID:</strong> {{ dept_head.employee_id }}</p>
+      <p><strong>Department:</strong> {{ department }}</p>
+      <p><strong>Sub-Department:</strong> {{ sub_department }}</p>
+    </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Employee</th>
-          <th>Category</th>
-          <th>Work Description</th>
-          <th>Date</th>
-          <th>Hours</th>
-          <th>Status</th>
-          <th>Submitted At</th>
-          <th>Remark</th>
-          <th>Update Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ts in department_timesheets %}
-        <tr>
-          <td data-label="Employee">{{ ts.user.username }}</td>
-          <td data-label="Category">{{ ts.category }}</td>
-          <td data-label="Work Description">{{ ts.work_description }}</td>
-          <td data-label="Date">{{ ts.date }}</td>
-          <td data-label="Hours">{{ ts.hours }}</td>
-          <td data-label="Status">{{ ts.status }}</td>
-          <td data-label="Submitted At">{{ ts.submitted_at }}</td>
-          <td data-label="Remark">{{ ts.admin_remark }}</td>
-          <td data-label="Update Status">
-            <form method="post">
-              {% csrf_token %}
-              <input type="hidden" name="ts_id" value="{{ ts.id }}">
-              <select name="action">
+    <!-- Left Panel - Employee List -->
+    <div class="panel">
+      <h3>Department Employees</h3>
+      {% for emp in department_employees %}
+      <div class="employee-item {% if selected_employee and selected_employee.id == emp.id %}active{% endif %}" 
+           onclick="window.location='?employee_id={{ emp.employee_id }}'">
+        <strong>{{ emp.user.username }}</strong>
+        <div class="employee-details">
+          <div>ID: {{ emp.employee_id }}</div>
+          <div>Post: {{ emp.allocated_post }}</div>
+        </div>
+      </div>
+      {% empty %}
+      <p>No employees in your department</p>
+      {% endfor %}
+    </div>
+
+    <!-- Middle Panel - Timesheets -->
+    <div class="panel">
+      {% if selected_employee %}
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>Timesheets for {{ selected_employee.user.username }}</h3>
+        <div class="post-update-form">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="employee_id" value="{{ selected_employee.employee_id }}">
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" name="allocated_post" value="{{ selected_employee.allocated_post }}" placeholder="Update post">
+              <button type="submit">Update</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      {% if employee_timesheets %}
+        {% for ts in employee_timesheets %}
+        <div class="timesheet-item">
+          <div style="display: flex; justify-content: space-between;">
+            <strong>{{ ts.category }} - {{ ts.work_description }}</strong>
+            <span class="status {{ ts.status|lower }}">{{ ts.status }}</span>
+          </div>
+          <div class="timesheet-details">
+            <div>Date: {{ ts.date }}</div>
+            <div>Hours: {{ ts.hours }}</div>
+            <div>Submitted: {{ ts.submitted_at|date:"M d, Y H:i" }}</div>
+            {% if ts.department_head_remark %}
+            <div>Remark: {{ ts.department_head_remark }}</div>
+            {% endif %}
+          </div>
+          <form method="post" style="margin-top: 0.5rem;">
+            {% csrf_token %}
+            <input type="hidden" name="ts_id" value="{{ ts.id }}">
+            <div style="display: flex; gap: 0.5rem;">
+              <select name="action" style="flex-grow: 1;">
                 <option value="Approved" {% if ts.status == "Approved" %}selected{% endif %}>Approve</option>
                 <option value="Rejected" {% if ts.status == "Rejected" %}selected{% endif %}>Reject</option>
                 <option value="Rework" {% if ts.status == "Rework" %}selected{% endif %}>Rework</option>
               </select>
-              <input type="text" name="department_head_remark" placeholder="Remark (optional)">
               <button type="submit">Update</button>
-            </form>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="9" style="text-align:center;">No timesheets found for this department.</td></tr>
+            </div>
+            <input type="text" name="department_head_remark" placeholder="Add remark" value="{{ ts.department_head_remark|default_if_none:'' }}" style="margin-top: 0.5rem; width: 100%;">
+          </form>
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
+      {% else %}
+        <p>No timesheets found for this employee.</p>
+      {% endif %}
+      {% else %}
+        <h3>Select an employee to view timesheets</h3>
+      {% endif %}
+    </div>
+
+    <!-- Right Panel - Empty for now -->
+    <div class="panel">
+      <h3>Department Statistics</h3>
+      <p>Total Employees: {{ department_employees.count }}</p>
+      <p>Pending Timesheets: {{ pending_timesheets.count }}</p>
+      <p>Approved Timesheets: {{ approved_timesheets.count }}</p>
+    </div>
 
     <div class="logout-link">
       <a href="{% url 'logout' %}">Logout</a>
