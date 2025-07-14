@@ -2,11 +2,10 @@ from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
-from .models import User, Employee, DepartmentHead, Timesheet
+from .models import AllocatedPost, PostDuty, TimesheetEntry, User, Employee, DepartmentHead, Timesheet
 from .forms import (
     EmployeePostAllocationForm, EmployeeSignUpForm, EmployeeSignInForm, 
-    DepartmentHeadSignUpForm, DepartmentHeadSignInForm, 
-    TimesheetEntryForm
+    DepartmentHeadSignUpForm, DepartmentHeadSignInForm, TimesheetForm
 )
 
 # Employee Views
@@ -20,6 +19,7 @@ def employee_signup_view(request):
         form = EmployeeSignUpForm()
     return render(request, 'employee_signup.html', {'form': form})
 
+@csrf_exempt
 def employee_signin_view(request):
     if request.method == 'POST':
         form = EmployeeSignInForm(request.POST)
@@ -28,15 +28,16 @@ def employee_signin_view(request):
             password = form.cleaned_data.get('password')
             try:
                 employee = Employee.objects.get(employee_id=employee_id)
-                if employee.allocated_post == "Unknown":
-                    form.add_error(None, "Your profile is under processing. Please contact your department head.")
-                else:
-                    user = authenticate(request, username=employee.user.username, password=password)
-                    if user is not None:
+                user = authenticate(request, username=employee.user.username, password=password)
+                
+                if user is not None:
+                    if employee.allocated_post is None:
+                        form.add_error(None, "Your profile is under processing. Please contact your department head.")
+                    else:
                         login(request, user)
                         return redirect('employee_dashboard')
-                    else:
-                        form.add_error(None, "Invalid employee ID or password")
+                else:
+                    form.add_error(None, "Invalid employee ID or password")
             except Employee.DoesNotExist:
                 form.add_error(None, "Invalid employee ID or password")
     else:
@@ -44,6 +45,7 @@ def employee_signin_view(request):
     
     return render(request, 'employee_signin.html', {'form': form})
 
+@csrf_exempt
 def employee_dashboard(request):
     try:
         employee = Employee.objects.get(user=request.user)
@@ -51,25 +53,38 @@ def employee_dashboard(request):
         return redirect('employee_signin')
     
     if request.method == 'POST':
-        form = TimesheetEntryForm(request.POST)
+        form = TimesheetForm(request.POST, employee=employee)
         if form.is_valid():
-            timesheet = form.save(commit=False)
-            timesheet.employee = employee
-            timesheet.department = employee.department
-            timesheet.status = 'Submitted'
-            timesheet.save()
+            # Create Timesheet
+            timesheet = Timesheet.objects.create(
+                employee=employee,
+                date=form.cleaned_data['date'],
+                department=employee.department,
+                status='Submitted'
+            )
+            
+            # Create Timesheet entries
+            for duty in employee.allocated_post.duties.all():
+                hours = form.cleaned_data.get(f'duty_{duty.id}')
+                if hours and float(hours) > 0:
+                    TimesheetEntry.objects.create(
+                        timesheet=timesheet,
+                        duty=duty,
+                        hours=hours
+                    )
+            
             return redirect('employee_dashboard')
     else:
-        form = TimesheetEntryForm()
+        form = TimesheetForm(employee=employee)
     
-    previous_entries = Timesheet.objects.filter(employee=employee)
+    # Get previous timesheets
+    previous_timesheets = Timesheet.objects.filter(employee=employee).prefetch_related('entries')
+    
     return render(request, 'employee_dashboard.html', {
         'form': form,
-        'previous_entries': previous_entries,
-        'employee_name': employee.user.username,
+        'previous_timesheets': previous_timesheets,
         'employee': employee,
     })
-
 # Department Head Views
 def department_head_signup_view(request):
     if request.method == 'POST':
@@ -99,7 +114,7 @@ def department_head_signin_view(request):
         form = DepartmentHeadSignInForm()
     return render(request, 'department_head_signin.html', {'form': form})
 
-@login_required
+@csrf_exempt
 def department_head_dashboard(request):
     try:
         dept_head = DepartmentHead.objects.get(user=request.user)
@@ -111,14 +126,23 @@ def department_head_dashboard(request):
     
     # Handle form submissions
     if request.method == 'POST':
-        # Timesheet approval handling
+        # Existing timesheet approval handling
         ts_id = request.POST.get('ts_id')
         action = request.POST.get('action')
         remark = request.POST.get('department_head_remark', '')
         
         # Post allocation handling
         employee_id = request.POST.get('employee_id')
-        allocated_post = request.POST.get('allocated_post')
+        allocated_post_id = request.POST.get('allocated_post')
+        
+        # New post handling
+        new_post_name = request.POST.get('new_post_name')
+        new_post_description = request.POST.get('new_post_description')
+        
+        # New duty handling
+        new_duty_post_id = request.POST.get('new_duty_post')
+        new_duty_name = request.POST.get('new_duty_name')
+        new_duty_description = request.POST.get('new_duty_description')
         
         if ts_id and action in ['Approved', 'Rejected', 'Rework']:
             try:
@@ -129,14 +153,34 @@ def department_head_dashboard(request):
             except Timesheet.DoesNotExist:
                 pass
         
-        if employee_id and allocated_post:
+        if employee_id and allocated_post_id:
             try:
                 employee = Employee.objects.get(employee_id=employee_id, department=dept_head.department)
-                employee.allocated_post = allocated_post
+                post = AllocatedPost.objects.get(id=allocated_post_id)
+                employee.allocated_post = post
                 employee.save()
-                # Refresh the selected employee after update
                 selected_employee = employee
-            except Employee.DoesNotExist:
+            except (Employee.DoesNotExist, AllocatedPost.DoesNotExist):
+                pass
+                
+        if new_post_name:
+            post = AllocatedPost.objects.create(
+                department=dept_head.department,
+                sub_department=dept_head.sub_department,
+                post_name=new_post_name,
+                description=new_post_description,
+                created_by=dept_head
+            )
+        
+        if new_duty_post_id and new_duty_name:
+            try:
+                post = AllocatedPost.objects.get(id=new_duty_post_id)
+                PostDuty.objects.create(
+                    post=post,
+                    duty_name=new_duty_name,
+                    description=new_duty_description
+                )
+            except AllocatedPost.DoesNotExist:
                 pass
     
     # Get department employees
@@ -150,6 +194,11 @@ def department_head_dashboard(request):
             employee_timesheets = Timesheet.objects.filter(employee=selected_employee).order_by('-submitted_at')
         except Employee.DoesNotExist:
             pass
+    
+    # Get posts and duties for this department
+    department_posts = AllocatedPost.objects.filter(department=dept_head.department)
+    if dept_head.sub_department:
+        department_posts = department_posts.filter(sub_department=dept_head.sub_department)
     
     # Get statistics for right panel
     pending_timesheets = Timesheet.objects.filter(
@@ -171,8 +220,8 @@ def department_head_dashboard(request):
         'sub_department': dept_head.sub_department,
         'employee_name': dept_head.user.username,
         'dept_head': dept_head,
+        'department_posts': department_posts,
     })
-# Admin Views
 @csrf_exempt  # Only for testing! Use csrf_token in your template in production.
 def admin_dashboard(request):
     # Check if user is admin

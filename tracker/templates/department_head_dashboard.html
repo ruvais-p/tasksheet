@@ -40,23 +40,6 @@
       grid-column: 1 / -1;
     }
 
-    .header-info h2 {
-      margin: 0 0 1rem 0;
-      color: #2c3e50;
-    }
-
-    .header-info p {
-      margin: 0.5rem 0;
-      color: #555;
-    }
-
-    h3 {
-      color: #2c3e50;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid #ddd;
-    }
-
     .employee-item {
       padding: 0.75rem;
       margin-bottom: 0.5rem;
@@ -76,13 +59,7 @@
       border-color: #bbdefb;
     }
 
-    .employee-details {
-      margin-top: 0.5rem;
-      font-size: 0.9rem;
-      color: #555;
-    }
-
-    .timesheet-item {
+    .timesheet-card {
       padding: 1rem;
       margin-bottom: 1rem;
       background-color: #fff;
@@ -90,10 +67,21 @@
       border: 1px solid #eee;
     }
 
+    .timesheet-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
     .timesheet-details {
       margin-top: 0.5rem;
-      font-size: 0.9rem;
-      color: #555;
+    }
+
+    .duty-entry {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
     }
 
     .status {
@@ -101,7 +89,6 @@
       border-radius: 20px;
       font-size: 0.85rem;
       font-weight: 500;
-      display: inline-block;
     }
 
     .status.open { background-color: #e3f2fd; color: #1976d2; }
@@ -110,17 +97,26 @@
     .status.rework { background-color: #fff8e1; color: #f9a825; }
     .status.rejected { background-color: #ffebee; color: #d32f2f; }
 
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
+    .action-form {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed #ddd;
     }
 
-    select, input[type="text"], button {
-      padding: 0.4rem 0.6rem;
+    .form-section {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+
+    select, input[type="text"], textarea, button {
+      padding: 0.5rem;
       font-size: 0.9rem;
       border-radius: 5px;
       border: 1px solid #ccc;
+      width: 100%;
+      margin-bottom: 0.5rem;
     }
 
     button {
@@ -128,21 +124,25 @@
       color: #fff;
       border: none;
       cursor: pointer;
+      transition: background-color 0.2s;
     }
 
     button:hover {
       background-color: #1a252f;
     }
 
+    .post-duty-item {
+      margin-bottom: 1rem;
+      background: white;
+      padding: 0.75rem;
+      border-radius: 5px;
+      border: 1px solid #eee;
+    }
+
     .logout-link {
       margin-top: 1.5rem;
       text-align: right;
       grid-column: 1 / -1;
-    }
-
-    .logout-link a {
-      text-decoration: none;
-      color: #c0392b;
     }
 
     @media (max-width: 1200px) {
@@ -161,8 +161,7 @@
   <div class="container">
     <div class="header-info">
       <h2>Department Head Dashboard</h2>
-      <p><strong>Name:</strong> {{ employee_name }}</p>
-      <p><strong>Employee ID:</strong> {{ dept_head.employee_id }}</p>
+      <p><strong>Name:</strong> {{ dept_head.user.username }}</p>
       <p><strong>Department:</strong> {{ department }}</p>
       <p><strong>Sub-Department:</strong> {{ sub_department }}</p>
     </div>
@@ -174,9 +173,9 @@
       <div class="employee-item {% if selected_employee and selected_employee.id == emp.id %}active{% endif %}" 
            onclick="window.location='?employee_id={{ emp.employee_id }}'">
         <strong>{{ emp.user.username }}</strong>
-        <div class="employee-details">
-          <div>ID: {{ emp.employee_id }}</div>
-          <div>Post: {{ emp.allocated_post }}</div>
+        <div>
+          <small>ID: {{ emp.employee_id }}</small><br>
+          <small>Post: {{ emp.allocated_post.post_name|default:"Not assigned" }}</small>
         </div>
       </div>
       {% empty %}
@@ -187,47 +186,58 @@
     <!-- Middle Panel - Timesheets -->
     <div class="panel">
       {% if selected_employee %}
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3>Timesheets for {{ selected_employee.user.username }}</h3>
-        <div class="post-update-form">
-          <form method="post">
+        <div>
+          <form method="post" style="display: flex; gap: 0.5rem;">
             {% csrf_token %}
             <input type="hidden" name="employee_id" value="{{ selected_employee.employee_id }}">
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="text" name="allocated_post" value="{{ selected_employee.allocated_post }}" placeholder="Update post">
-              <button type="submit">Update</button>
-            </div>
+            <select name="allocated_post" style="flex-grow: 1;">
+              {% for post in department_posts %}
+                <option value="{{ post.id }}" {% if selected_employee.allocated_post.id == post.id %}selected{% endif %}>
+                  {{ post.post_name }}
+                </option>
+              {% endfor %}
+            </select>
+            <button type="submit">Update Post</button>
           </form>
         </div>
       </div>
       
       {% if employee_timesheets %}
         {% for ts in employee_timesheets %}
-        <div class="timesheet-item">
-          <div style="display: flex; justify-content: space-between;">
-            <strong>{{ ts.category }} - {{ ts.work_description }}</strong>
+        <div class="timesheet-card">
+          <div class="timesheet-header">
+            <strong>{{ ts.date }}</strong>
             <span class="status {{ ts.status|lower }}">{{ ts.status }}</span>
           </div>
+          
           <div class="timesheet-details">
-            <div>Date: {{ ts.date }}</div>
-            <div>Hours: {{ ts.hours }}</div>
-            <div>Submitted: {{ ts.submitted_at|date:"M d, Y H:i" }}</div>
+            {% for entry in ts.entries.all %}
+            <div class="duty-entry">
+              <span>{{ entry.duty.duty_name }}</span>
+              <span>{{ entry.hours }} hours</span>
+            </div>
+            {% endfor %}
+            
             {% if ts.department_head_remark %}
-            <div>Remark: {{ ts.department_head_remark }}</div>
+            <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+              <strong>Your Remark:</strong> {{ ts.department_head_remark }}
+            </div>
             {% endif %}
           </div>
-          <form method="post" style="margin-top: 0.5rem;">
+          
+          <form method="post" class="action-form">
             {% csrf_token %}
             <input type="hidden" name="ts_id" value="{{ ts.id }}">
-            <div style="display: flex; gap: 0.5rem;">
-              <select name="action" style="flex-grow: 1;">
-                <option value="Approved" {% if ts.status == "Approved" %}selected{% endif %}>Approve</option>
-                <option value="Rejected" {% if ts.status == "Rejected" %}selected{% endif %}>Reject</option>
-                <option value="Rework" {% if ts.status == "Rework" %}selected{% endif %}>Rework</option>
-              </select>
-              <button type="submit">Update</button>
-            </div>
-            <input type="text" name="department_head_remark" placeholder="Add remark" value="{{ ts.department_head_remark|default_if_none:'' }}" style="margin-top: 0.5rem; width: 100%;">
+            <select name="action" required>
+              <option value="">Select Action</option>
+              <option value="Approved" {% if ts.status == "Approved" %}selected{% endif %}>Approve</option>
+              <option value="Rejected" {% if ts.status == "Rejected" %}selected{% endif %}>Reject</option>
+              <option value="Rework" {% if ts.status == "Rework" %}selected{% endif %}>Request Rework</option>
+            </select>
+            <textarea name="department_head_remark" placeholder="Add remark (required for Rejected/Rework)">{{ ts.department_head_remark|default_if_none:'' }}</textarea>
+            <button type="submit">Update Status</button>
           </form>
         </div>
         {% endfor %}
@@ -239,12 +249,59 @@
       {% endif %}
     </div>
 
-    <!-- Right Panel - Empty for now -->
+    <!-- Right Panel - Posts & Duties Management -->
     <div class="panel">
-      <h3>Department Statistics</h3>
-      <p>Total Employees: {{ department_employees.count }}</p>
-      <p>Pending Timesheets: {{ pending_timesheets.count }}</p>
-      <p>Approved Timesheets: {{ approved_timesheets.count }}</p>
+      <h3>Manage Posts & Duties</h3>
+      
+      <div class="form-section">
+        <h4>Create New Post</h4>
+        <form method="post">
+          {% csrf_token %}
+          <input type="text" name="new_post_name" placeholder="Post name" required>
+          <textarea name="new_post_description" placeholder="Description (optional)"></textarea>
+          <button type="submit">Create Post</button>
+        </form>
+      </div>
+      
+      <div class="form-section">
+        <h4>Add Duties to Post</h4>
+        <form method="post">
+          {% csrf_token %}
+          <select name="new_duty_post" required>
+            <option value="">Select Post</option>
+            {% for post in department_posts %}
+              <option value="{{ post.id }}">{{ post.post_name }}</option>
+            {% endfor %}
+          </select>
+          <input type="text" name="new_duty_name" placeholder="Duty name" required>
+          <textarea name="new_duty_description" placeholder="Description (optional)"></textarea>
+          <button type="submit">Add Duty</button>
+        </form>
+      </div>
+      
+      <div>
+        <h4>Current Posts & Duties</h4>
+        {% if department_posts %}
+          {% for post in department_posts %}
+            <div class="post-duty-item">
+              <strong>{{ post.post_name }}</strong>
+              {% if post.description %}<p>{{ post.description }}</p>{% endif %}
+              <ul>
+                {% for duty in post.duties.all %}
+                  <li>
+                    <strong>{{ duty.duty_name }}</strong>
+                    {% if duty.description %}<span> - {{ duty.description }}</span>{% endif %}
+                  </li>
+                {% empty %}
+                  <li>No duties defined</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p>No posts defined yet</p>
+        {% endif %}
+      </div>
     </div>
 
     <div class="logout-link">

@@ -37,7 +37,7 @@ class EmployeeSignUpForm(UserCreationForm):
                 employee_id=self.cleaned_data['employee_id'],
                 department=self.cleaned_data['department'],
                 sub_department=self.cleaned_data.get('sub_department'),  # Using get() to be safe
-                allocated_post="Unknown"  # Set default value here
+                allocated_post=None  # This is correct for a nullable ForeignKey
             )
         return user
 class EmployeePostAllocationForm(forms.ModelForm):
@@ -93,13 +93,21 @@ class DepartmentHeadSignInForm(forms.Form):
     employee_id = forms.CharField(max_length=20)
     password = forms.CharField(widget=forms.PasswordInput)
     
-class TimesheetEntryForm(forms.ModelForm):
-    class Meta:
-        model = Timesheet
-        fields = ['category', 'work_description', 'date', 'hours']
-        widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
-            'category': forms.Select(),
-            'work_description': forms.Select(),
-            'hours': forms.NumberInput(attrs={'step': '0.25'}),
-        }
+class TimesheetForm(forms.Form):
+    date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    
+    def __init__(self, *args, **kwargs):
+        employee = kwargs.pop('employee', None)
+        super().__init__(*args, **kwargs)
+        
+        if employee and employee.allocated_post:
+            duties = employee.allocated_post.duties.all()
+            for duty in duties:
+                self.fields[f'duty_{duty.id}'] = forms.DecimalField(
+                    label=duty.duty_name,
+                    required=False,
+                    max_digits=4,
+                    decimal_places=2,
+                    min_value=0,
+                    widget=forms.NumberInput(attrs={'step': '0.25', 'placeholder': '0.00'})
+                )

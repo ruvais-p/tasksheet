@@ -37,24 +37,49 @@
       color: #555;
     }
 
-    form {
+    .timesheet-form {
       margin-bottom: 2rem;
+      background: #f8f9fa;
+      padding: 1.5rem;
+      border-radius: 8px;
     }
 
-    form p {
+    .form-group {
       margin-bottom: 1rem;
     }
 
-    input[type="text"],
-    input[type="number"],
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
     input[type="date"],
-    select,
-    textarea {
+    input[type="number"] {
       width: 100%;
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 6px;
       font-size: 1rem;
+    }
+
+    .duty-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #eee;
+    }
+
+    .duty-name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .duty-hours {
+      width: 100px;
     }
 
     button[type="submit"] {
@@ -65,42 +90,61 @@
       border-radius: 6px;
       font-size: 1rem;
       cursor: pointer;
+      margin-top: 1rem;
     }
 
     button[type="submit"]:hover {
       background-color: #1f2e3c;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      font-size: 0.95rem;
+    .timesheet-card {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
     }
 
-    table th, table td {
-      padding: 0.75rem;
-      border: 1px solid #ddd;
-      text-align: left;
+    .timesheet-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
     }
 
-    table th {
-      background-color: #f0f2f5;
-      font-weight: 600;
+    .timesheet-date {
+      font-weight: bold;
     }
 
-    .status {
+    .timesheet-status {
       padding: 0.3rem 0.8rem;
       border-radius: 20px;
       font-size: 0.85rem;
       font-weight: 500;
     }
 
-    .status.open { background-color: #e3f2fd; color: #1976d2; }
-    .status.submitted { background-color: #fff3e0; color: #f57c00; }
-    .status.approved { background-color: #e8f5e8; color: #388e3c; }
-    .status.rework { background-color: #fff8e1; color: #f9a825; }
-    .status.rejected { background-color: #ffebee; color: #d32f2f; }
+    .timesheet-status.open { background-color: #e3f2fd; color: #1976d2; }
+    .timesheet-status.submitted { background-color: #fff3e0; color: #f57c00; }
+    .timesheet-status.approved { background-color: #e8f5e8; color: #388e3c; }
+    .timesheet-status.rework { background-color: #fff8e1; color: #f9a825; }
+    .timesheet-status.rejected { background-color: #ffebee; color: #d32f2f; }
+
+    .timesheet-entry {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .timesheet-entry:last-child {
+      border-bottom: none;
+    }
+
+    .timesheet-remark {
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed #ccc;
+      font-size: 0.9rem;
+      color: #666;
+    }
 
     .logout-link {
       margin-top: 1.5rem;
@@ -113,38 +157,14 @@
     }
 
     @media (max-width: 768px) {
-      table, thead, tbody, th, td, tr {
-        display: block;
+      .duty-row {
+        flex-direction: column;
+        align-items: flex-start;
       }
-
-      table tr {
-        margin-bottom: 1rem;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        padding: 1rem;
-        background: #fff;
-      }
-
-      table td {
-        text-align: right;
-        position: relative;
-        padding-left: 50%;
-        border: none;
-        border-bottom: 1px solid #eee;
-      }
-
-      table td::before {
-        content: attr(data-label);
-        position: absolute;
-        left: 1rem;
-        top: 0.75rem;
-        font-weight: bold;
-        text-align: left;
-        color: #555;
-      }
-
-      table th {
-        display: none;
+      
+      .duty-hours {
+        width: 100%;
+        margin-top: 0.5rem;
       }
     }
   </style>
@@ -155,55 +175,79 @@
     
     <div class="employee-info">
       <h3>Employee Information</h3>
-      <p><strong>Name:</strong> {{ employee_name }}</p>
+      <p><strong>Name:</strong> {{ employee.user.username }}</p>
       <p><strong>Employee ID:</strong> {{ employee.employee_id }}</p>
       <p><strong>Department:</strong> {{ employee.department }}</p>
       <p><strong>Sub-Department:</strong> {{ employee.sub_department|default:"Not specified" }}</p>
-      <p><strong>Allocated Post:</strong> {{ employee.allocated_post }}</p>
+      <p><strong>Allocated Post:</strong> {{ employee.allocated_post.post_name }}</p>
     </div>
 
-    <h3>Enter Timesheet Data</h3>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">Submit for Approval</button>
-    </form>
-
-    <h3>Your Previous Entries</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Category</th>
-          <th>Description</th>
-          <th>Hours</th>
-          <th>Status</th>
-          <th>Admin Remark</th>
-          <th>Dept Head Remark</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for entry in previous_entries %}
-        <tr>
-          <td data-label="Date">{{ entry.date }}</td>
-          <td data-label="Category">{{ entry.category }}</td>
-          <td data-label="Description">{{ entry.work_description }}</td>
-          <td data-label="Hours">{{ entry.hours }}</td>
-          <td data-label="Status">
-            <span class="status {{ entry.status|lower }}">{{ entry.status }}</span>
-          </td>
-          <td data-label="Admin Remark">{{ entry.admin_remark|default:"—" }}</td>
-          <td data-label="Dept Head Remark">{{ entry.department_head_remark|default:"—" }}</td>
-        </tr>
+    <div class="timesheet-form">
+      <h3>New Timesheet Entry</h3>
+      <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <label for="id_date">Date</label>
+          <input type="date" name="date" id="id_date" required>
+        </div>
+        
+        <h4>Your Duties</h4>
+        {% for duty in employee.allocated_post.duties.all %}
+        <div class="duty-row">
+          <div class="duty-name">{{ duty.duty_name }}</div>
+          <div class="duty-hours">
+            <input type="number" name="duty_{{ duty.id }}" 
+                   step="0.25" min="0" placeholder="0.00" 
+                   value="0.00">
+          </div>
+        </div>
         {% empty %}
-        <tr><td colspan="7" style="text-align:center;">No previous entries found.</td></tr>
+        <p>No duties assigned to your post yet. Please contact your department head.</p>
         {% endfor %}
-      </tbody>
-    </table>
+        
+        {% if employee.allocated_post.duties.all %}
+        <button type="submit">Submit Timesheet</button>
+        {% endif %}
+      </form>
+    </div>
+
+    <h3>Your Previous Timesheets</h3>
+    {% for timesheet in previous_timesheets %}
+    <div class="timesheet-card">
+      <div class="timesheet-header">
+        <div class="timesheet-date">{{ timesheet.date }}</div>
+        <div class="timesheet-status {{ timesheet.status|lower }}">{{ timesheet.status }}</div>
+      </div>
+      
+      {% for entry in timesheet.entries.all %}
+      <div class="timesheet-entry">
+        <div>{{ entry.duty.duty_name }}</div>
+        <div>{{ entry.hours }} hours</div>
+      </div>
+      {% endfor %}
+      
+      {% if timesheet.department_head_remark %}
+      <div class="timesheet-remark">
+        <strong>Remark:</strong> {{ timesheet.department_head_remark }}
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <p>No previous timesheets found.</p>
+    {% endfor %}
 
     <div class="logout-link">
       <a href="{% url 'logout' %}">Logout</a>
     </div>
   </div>
+
+  <script>
+    // Set today's date as default
+    document.addEventListener('DOMContentLoaded', function() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('id_date').value = today;
+    });
+  </script>
 </body>
 </html>
